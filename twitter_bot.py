@@ -1,12 +1,16 @@
 import os
 import time
-import tweepy
 import json
 from datetime import datetime
+from typing import List
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from dotenv import load_dotenv
+import tweepy
 
-
+# Load environment variables
 load_dotenv()
+
 client = tweepy.Client(
     bearer_token=os.getenv("TWITTER_BEARER_TOKEN"),
     consumer_key=os.getenv("TWITTER_API_KEY"),
@@ -15,9 +19,10 @@ client = tweepy.Client(
     access_token_secret=os.getenv("TWITTER_ACCESS_SECRET")
 )
 
-# Keywords to search
-KEYWORDS = ["ai agent", "automate with ai", "autonomous agent"]
 LOG_FILE = "twitter_log.json"
+
+# Initialize FastAPI app
+app = FastAPI()
 
 # Load or initialize log
 if os.path.exists(LOG_FILE):
@@ -34,26 +39,18 @@ def save_log(entry):
 def already_replied(tweet_id):
     return any(entry["id"] == tweet_id for entry in replied_log)
 
-def format_time(seconds_left):
-    mins, secs = divmod(int(seconds_left), 60)
-    return f"{mins}:{secs:02d}"
-
 def handle_rate_limit(response_headers):
     if "x-rate-limit-reset" in response_headers:
         reset_time = int(response_headers["x-rate-limit-reset"])
-        while True:
-            now = int(time.time())
-            wait_time = reset_time - now
-            if wait_time <= 0:
-                print("✅ Rate limit window passed. Resuming...")
-                break
-            mins, secs = divmod(wait_time, 60)
-            print(f"\r⏳ Rate limit hit. Time left: {mins:02d}:{secs:02d}", end="")
-            time.sleep(1)
-        print()
+        now = int(time.time())
+        wait_time = reset_time - now
+        print(f"⏳ Rate limit hit. Wait for {wait_time} seconds.")
+        time.sleep(max(wait_time, 0))
+        print("✅ Rate limit window passed. Resuming...")
 
-def search_and_reply():
-    for keyword in KEYWORDS:
+def search_and_reply(keywords: List[str], reply_text: str):
+    results = []
+    for keyword in keywords:
         print(f"🔍 Searching for: '{keyword}'")
         try:
             response = client.search_recent_tweets(
@@ -79,10 +76,9 @@ def search_and_reply():
                 username = users.get(author_id, {}).get("username", "unknown")
 
                 try:
-                    response_text = f"Hey! 👋 If you're exploring {keyword}, check this out 👉 [insert your link or CTA here]"
-                    client.create_tweet(in_reply_to_tweet_id=tweet_id, text=response_text)
+                    full_response = reply_text.replace("{keyword}", keyword).replace("{username}", username)
+                    client.create_tweet(in_reply_to_tweet_id=tweet_id, text=full_response)
 
-                    print(f"✅ Replied to tweet: {tweet_id}")
                     log_entry = {
                         "type": "tweet",
                         "id": tweet_id,
@@ -94,47 +90,40 @@ def search_and_reply():
                         "timestamp": datetime.utcnow().isoformat() + "Z"
                     }
                     save_log(log_entry)
+                    results.append(log_entry)
+                    print(f"✅ Replied to tweet: {tweet_id}")
                     time.sleep(10)
 
                 except tweepy.TooManyRequests as e:
                     handle_rate_limit(e.response.headers)
-                    return
+                    return results
 
         except tweepy.TooManyRequests as e:
             handle_rate_limit(e.response.headers)
-            return
+            return results
         except Exception as e:
-            print(f"❌ Search failed for keyword '{keyword}': {e}")
+            print(f"❌ Error for keyword '{keyword}': {e}")
 
-        time.sleep(60)
+        time.sleep(5)
 
-def main():
-    while True:
-        search_and_reply()
-        print("🔁 Sleeping 15 minutes before next round...")
-        time.sleep(15 * 60)
+    return results
 
-if __name__ == "__main__":
-    main()
+# Input schema
+class BotRequest(BaseModel):
+    keywords: List[str]
+    response_text: str  # you can include {keyword} and {username} as placeholders
 
+@app.get("/")
+def root():
+    return {"message": "Twitter Bot is live. Use POST /run with keywords and response_text."}
 
-# For Posting Tweets
-# tweeted = client.create_tweet(text=" YO00")
-# print(tweeted)
-
-# FOR LIKING 
-# client.like(tweet_id=1935947530438598922)
-
-# FOR DELETING TWEETS
-# client.delete_tweet(id=1935946376426205607)
-# print("Tweet Deleted")
-
-# FOR SEARCHING KEYWORDS
-# query = "AI Agents"
-# response = client.search_recent_tweets(query=query,max_results=10)
-
-# if response.data:
-#     for tweet in response.data:
-#             print(f"Tweet ID: {tweet.id} | Text: {tweet.text}")
-# else:
-#       print("No Matching tweets found.")
+@app.post("/run")
+def run_bot(request: BotRequest):
+    if not request.keywords or not request.response_text:
+        raise HTTPException(status_code=400, detail="Both keywords and response_text are required.")
+    
+    results = search_and_reply(request.keywords, request.response_text)
+    return {
+        "message": f"✅ Completed. {len(results)} tweets replied.",
+        "log": results
+    }
