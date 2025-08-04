@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Bot Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <i class="fab fa-twitter text-white text-sm"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">Twitter Bot Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <div class="w-2 h-2 bg-gray-400 rounded-full" id="statusIndicator"></div>
+                        <span id="statusText">Bot Inactive</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Main Control Panel -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <i class="fas fa-cog mr-2"></i>
+                            Bot Configuration
+                        </h2>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- Keywords Section -->
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 flex items-center">
+                                <i class="fas fa-search mr-2 text-blue-500"></i>
+                                Keywords to Search For
+                            </label>
+                            <div class="relative">
+                                <input id="keywords" type="text" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                       placeholder="AI, machine learning, tech, startup">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <i class="fas fa-tags text-gray-400"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 flex items-center">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                These keywords will be used to find tweets to reply to
+                            </p>
+                        </div>
+
+                        <!-- Topics Section -->
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 flex items-center">
+                                <i class="fas fa-lightbulb mr-2 text-yellow-500"></i>
+                                Topics to Post About
+                            </label>
+                            <div class="relative">
+                                <input id="topics" type="text" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                       placeholder="AI trends, tech insights, startup tips">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <i class="fas fa-pen text-gray-400"></i>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 flex items-center">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                These topics will be used to generate original tweets
+                            </p>
+                        </div>
+
+                        <!-- Schedule Info -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                            <h3 class="text-sm font-semibold text-blue-800 flex items-center mb-3">
+                                <i class="fas fa-clock mr-2"></i>
+                                Scheduled Times
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="space-y-2">
+                                    <div class="flex items-center text-sm">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                        <span class="font-medium">11:00 AM</span>
+                                        <span class="text-gray-600 ml-2">Reply to 3 tweets</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span class="font-medium">11:15 AM</span>
+                                        <span class="text-gray-600 ml-2">Post 3 tweets</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-center text-sm">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                        <span class="font-medium">2:00 PM</span>
+                                        <span class="text-gray-600 ml-2">Reply to 3 tweets</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span class="font-medium">2:15 PM</span>
+                                        <span class="text-gray-600 ml-2">Post 3 tweets</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 md:col-span-2">
+                                    <div class="flex items-center text-sm">
+                                        <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                                        <span class="font-medium">6:00 PM</span>
+                                        <span class="text-gray-600 ml-2">Reply to 3 tweets</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                                        <span class="font-medium">6:15 PM</span>
+                                        <span class="text-gray-600 ml-2">Post 3 tweets</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Button -->
+                        <button id="scheduleButton" onclick="scheduleBot()" 
+                                class="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2">
+                            <i class="fas fa-play"></i>
+                            <span>Schedule Bot</span>
+                        </button>
+                        
+                        <!-- Stop Bot Button (hidden by default) -->
+                        <button id="stopButton" onclick="stopBot()" 
+                                class="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 px-6 rounded-lg font-medium hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2 mt-3 hidden">
+                            <i class="fas fa-stop"></i>
+                            <span>Stop Bot</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div class="space-y-6">
+                <!-- Quick Stats -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-chart-bar mr-2 text-blue-500"></i>
+                        Quick Stats
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-reply text-blue-500 mr-2"></i>
+                                <span class="text-sm font-medium text-gray-700">Replies Today</span>
+                            </div>
+                            <span class="text-lg font-bold text-blue-600" id="repliesCount">0</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-paper-plane text-green-500 mr-2"></i>
+                                <span class="text-sm font-medium text-gray-700">Posts Today</span>
+                            </div>
+                            <span class="text-lg font-bold text-green-600" id="postsCount">0</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-calendar text-purple-500 mr-2"></i>
+                                <span class="text-sm font-medium text-gray-700">Bot Status</span>
+                            </div>
+                            <span class="text-lg font-bold text-purple-600" id="botStatus">Inactive</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-history mr-2 text-gray-500"></i>
+                        Recent Activity
+                    </h3>
+                    <div class="space-y-3" id="recentActivity">
+                        <div class="flex items-center space-x-3 p-2 rounded-lg bg-gray-50">
+                            <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                            <span class="text-sm text-gray-600">Bot scheduled successfully</span>
+                            <span class="text-xs text-gray-400 ml-auto">2m ago</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="mt-8">
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div class="bg-gradient-to-r from-gray-500 to-gray-600 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <i class="fas fa-list-alt mr-2"></i>
+                            Activity Logs
+                        </h2>
+                        <button onclick="fetchLogs()" 
+                                class="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Refresh</span>
+                        </button>
+                        <button onclick="clearLogs()" 
+                                class="bg-red-500 bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2">
+                            <i class="fas fa-trash"></i>
+                            <span>Clear</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="p-6">
+                    <div id="logs" class="space-y-4 max-h-96 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function scheduleBot() {
+            const scheduleButton = document.getElementById('scheduleButton');
+            
+            // Check if bot is already scheduled (multiple checks)
+            if (scheduleButton.disabled || 
+                scheduleButton.textContent.includes('Scheduled') || 
+                document.getElementById('botStatus').textContent === 'Active') {
+                showNotification('Bot is already scheduled! Please stop the bot first before re-scheduling.', 'error');
+                return;
+            }
+            
+            const keywordsInput = document.getElementById('keywords').value.trim();
+            const topicsInput = document.getElementById('topics').value.trim();
+            
+            // Validate inputs
+            if (!keywordsInput || !topicsInput) {
+                showNotification('Please enter both keywords and topics', 'error');
+                return;
+            }
+            
+            const keywords = keywordsInput.split(',').map(k => k.trim()).filter(k => k);
+            const topics = topicsInput.split(',').map(t => t.trim()).filter(t => t);
+            
+            if (keywords.length === 0 || topics.length === 0) {
+                showNotification('Please enter valid keywords and topics (comma-separated)', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const button = event.target;
+            const originalContent = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span> Scheduling...</span>';
+            button.disabled = true;
+            
+            try {
+                const response = await fetch('http://localhost:8000/schedule', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keywords, topics })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showNotification('Bot scheduled successfully!', 'success');
+                    document.getElementById('botStatus').textContent = 'Active';
+                    
+                    // Update header status
+                    document.getElementById('statusIndicator').className = 'w-2 h-2 bg-green-400 rounded-full';
+                    document.getElementById('statusText').textContent = 'Bot Active';
+                    
+                    // Change button to show scheduled state
+                    const button = document.getElementById('scheduleButton');
+                    button.innerHTML = '<i class="fas fa-check"></i><span>Bot Scheduled</span>';
+                    button.className = 'w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 px-6 rounded-lg font-medium hover:from-green-600 hover:to-green-700 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2';
+                    button.disabled = true;
+                    
+                    // Show stop button
+                    document.getElementById('stopButton').classList.remove('hidden');
+                    
+                    addActivityItem('Bot scheduled with ' + keywords.length + ' keywords and ' + topics.length + ' topics');
+                } else {
+                    showNotification('Error: ' + (data.detail || 'Failed to schedule bot'), 'error');
+                }
+            } catch (error) {
+                showNotification('Error scheduling bot: ' + error.message, 'error');
+                // Reset button on error
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }
+        }
+
+        function showNotification(message, type) {
+            // Remove existing notifications
+            const existingNotifications = document.querySelectorAll('.notification');
+            existingNotifications.forEach(n => n.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-all duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`;
+            
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        function addActivityItem(text) {
+            const activityContainer = document.getElementById('recentActivity');
+            const activityItem = document.createElement('div');
+            activityItem.className = 'flex items-center space-x-3 p-2 rounded-lg bg-gray-50';
+            activityItem.innerHTML = `
+                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span class="text-sm text-gray-600">${text}</span>
+                <span class="text-xs text-gray-400 ml-auto">Just now</span>
+            `;
+            
+            // Add to beginning
+            activityContainer.insertBefore(activityItem, activityContainer.firstChild);
+            
+            // Keep only last 5 items
+            const items = activityContainer.children;
+            if (items.length > 5) {
+                activityContainer.removeChild(items[items.length - 1]);
+            }
+        }
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch('http://localhost:8000/logs');
+                const data = await response.json();
+                const logsDiv = document.getElementById('logs');
+                logsDiv.innerHTML = '';
+
+                // Update stats
+                document.getElementById('repliesCount').textContent = data.reply_log.length;
+                document.getElementById('postsCount').textContent = data.post_log.length;
+                
+                // Update completion status
+                if (data.is_completed) {
+                    document.getElementById('botStatus').textContent = 'Completed';
+                    document.getElementById('statusIndicator').className = 'w-2 h-2 bg-yellow-400 rounded-full';
+                    document.getElementById('statusText').textContent = 'Tasks Completed';
+                    
+                    // Show completion message
+                    const completionDiv = document.createElement('div');
+                    completionDiv.className = 'mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded';
+                    completionDiv.innerHTML = `
+                        <h3 class="text-yellow-800 font-semibold">🎉 All Daily Tasks Completed!</h3>
+                        <p class="text-yellow-700 text-sm mt-1">Bot has completed all scheduled tasks and stopped automatically.</p>
+                        <p class="text-yellow-600 text-xs mt-2">Ready for new schedule tomorrow!</p>
+                    `;
+                    
+                    // Remove any existing completion message
+                    const existingCompletion = document.querySelector('.bg-yellow-50');
+                    if (existingCompletion) existingCompletion.remove();
+                    
+                    // Add completion message
+                    document.querySelector('.bg-white.p-6.rounded-xl').appendChild(completionDiv);
+                }
+
+                // Display reply logs
+                if (data.reply_log.length > 0) {
+                    logsDiv.innerHTML += `
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                                <i class="fas fa-reply text-blue-500 mr-2"></i>
+                                Replies (${data.reply_log.length})
+                            </h3>
+                            <div class="space-y-3">
+                    `;
+                    
+                    data.reply_log.forEach(log => {
+                        logsDiv.innerHTML += `
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${log.keyword}</span>
+                                            <span class="text-xs text-gray-500">Tweet ID: ${log.id}</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700 mb-2">${log.generated_comment}</p>
+                                        <div class="flex items-center space-x-4 text-xs text-gray-500">
+                                            <span><i class="fas fa-clock mr-1"></i>${log.timestamp}</span>
+                                            <a href="${log.url}" target="_blank" class="text-blue-500 hover:text-blue-600 flex items-center">
+                                                <i class="fas fa-external-link-alt mr-1"></i>View Tweet
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    logsDiv.innerHTML += '</div></div>';
+                }
+
+                // Display post logs
+                if (data.post_log.length > 0) {
+                    logsDiv.innerHTML += `
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                                <i class="fas fa-paper-plane text-green-500 mr-2"></i>
+                                Posts (${data.post_log.length})
+                            </h3>
+                            <div class="space-y-3">
+                    `;
+                    
+                    data.post_log.forEach(log => {
+                        logsDiv.innerHTML += `
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-2">
+                                            <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">${log.topic}</span>
+                                            <span class="text-xs text-gray-500">Tweet ID: ${log.id}</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700 mb-2">${log.content}</p>
+                                        <div class="flex items-center space-x-4 text-xs text-gray-500">
+                                            <span><i class="fas fa-clock mr-1"></i>${log.timestamp}</span>
+                                            <a href="${log.url}" target="_blank" class="text-green-500 hover:text-green-600 flex items-center">
+                                                <i class="fas fa-external-link-alt mr-1"></i>View Tweet
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    logsDiv.innerHTML += '</div></div>';
+                }
+
+                if (data.reply_log.length === 0 && data.post_log.length === 0) {
+                    logsDiv.innerHTML = `
+                        <div class="text-center py-8">
+                            <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-gray-500">No logs available yet</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('logs').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-red-400 text-4xl mb-4"></i>
+                        <p class="text-red-500">Error fetching logs: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function clearLogs() {
+            if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('http://localhost:8000/clear_logs', {
+                        method: 'POST'
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        showNotification('Logs cleared successfully!', 'success');
+                        // Reset stats
+                        document.getElementById('repliesCount').textContent = '0';
+                        document.getElementById('postsCount').textContent = '0';
+                        // Clear recent activity
+                        document.getElementById('recentActivity').innerHTML = '';
+                        // Refresh logs display
+                        fetchLogs();
+                    } else {
+                        showNotification('Error clearing logs: ' + (data.detail || 'Failed'), 'error');
+                    }
+                } catch (error) {
+                    showNotification('Error clearing logs: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Function to stop the bot
+        async function stopBot() {
+            if (confirm('Are you sure you want to stop the bot? This will cancel all scheduled tasks.')) {
+                try {
+                    const response = await fetch('http://localhost:8000/stop', {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('Bot stopped successfully!', 'success');
+                        document.getElementById('botStatus').textContent = 'Inactive';
+                        
+                        // Update header status
+                        document.getElementById('statusIndicator').className = 'w-2 h-2 bg-gray-400 rounded-full';
+                        document.getElementById('statusText').textContent = 'Bot Inactive';
+                        
+                        // Reset schedule button
+                        const button = document.getElementById('scheduleButton');
+                        button.innerHTML = '<i class="fas fa-play"></i><span>Schedule Bot</span>';
+                        button.className = 'w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2';
+                        button.disabled = false;
+                        
+                        // Hide stop button
+                        document.getElementById('stopButton').classList.add('hidden');
+                        
+                        addActivityItem('Bot stopped by user');
+                    } else {
+                        showNotification('Error stopping bot', 'error');
+                    }
+                } catch (error) {
+                    showNotification('Error stopping bot: ' + error.message, 'error');
+                }
+            }
+        }
+
+        // Function to reset UI when bot is restarted
+        function resetUI() {
+            // Clear form inputs
+            document.getElementById('keywords').value = '';
+            document.getElementById('topics').value = '';
+            
+            // Reset stats
+            document.getElementById('repliesCount').textContent = '0';
+            document.getElementById('postsCount').textContent = '0';
+            document.getElementById('botStatus').textContent = 'Inactive';
+            
+            // Update header status
+            document.getElementById('statusIndicator').className = 'w-2 h-2 bg-gray-400 rounded-full';
+            document.getElementById('statusText').textContent = 'Bot Inactive';
+            
+            // Reset button to original state
+            const button = document.getElementById('scheduleButton');
+            button.innerHTML = '<i class="fas fa-play"></i><span>Schedule Bot</span>';
+            button.className = 'w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2';
+            button.disabled = false;
+            
+            // Hide stop button
+            document.getElementById('stopButton').classList.add('hidden');
+            
+            // Clear recent activity
+            document.getElementById('recentActivity').innerHTML = '';
+            
+            // Clear logs display
+            document.getElementById('logs').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-inbox text-gray-400 text-4xl mb-4"></i>
+                    <p class="text-gray-500">No logs available yet</p>
+                </div>
+            `;
+            
+            showNotification('UI reset successfully!', 'success');
+        }
+
+        // Add reset button to header
+        document.addEventListener('DOMContentLoaded', function() {
+            const header = document.querySelector('header .flex.items-center.justify-between');
+            const resetButton = document.createElement('button');
+            resetButton.className = 'bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors';
+            resetButton.innerHTML = '<i class="fas fa-redo mr-1"></i>Reset UI';
+            resetButton.onclick = resetUI;
+            header.appendChild(resetButton);
+        });
+
+        // Initial load
+        fetchLogs();
+    </script>
+</body>
+</html>
