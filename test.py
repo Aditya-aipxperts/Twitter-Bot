@@ -578,17 +578,3 @@ def stop_bot():
         raise HTTPException(status_code=500, detail=f"Error stopping bot: {str(e)}")
 
 
-# Main entry point for running the scheduler
-if __name__ == "__main__":
-    print("🤖 Twitter Bot Starting...")
-    print("=" * 50)
-    print("📱 Open http://localhost:8000 in your browser")
-    print("⏰ Scheduler will start when you call the /schedule endpoint")
-    print("=" * 50)
-    
-    # Keep the main thread alive
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print("⏹️ Bot stopped by user")
