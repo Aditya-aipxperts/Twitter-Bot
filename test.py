@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import threading
 from datetime import datetime
 from typing import List
 from fastapi import FastAPI, HTTPException
@@ -38,6 +39,8 @@ reply_index = 0
 post_index = 0
 task_counter = 0  # Track completed tasks
 total_daily_tasks = 6  # 3 replies + 3 posts per day
+scheduler_running = False  # Track if scheduler is running
+scheduler_thread = None  # Store scheduler thread
 
 # Initialize FastAPI app
 app = FastAPI(title="Twitter Bot")
@@ -400,6 +403,8 @@ def post_multiple_tweets(topics: List[str], max_posts: int = 3):
 
 def schedule_tasks(keywords: List[str], topics: List[str]):
     """Schedule reply and post tasks for morning, afternoon, evening"""
+    global scheduled_keywords, scheduled_topics, task_counter, scheduler_running, scheduler_thread
+    
     # Clear any existing schedules
     schedule.clear()
     
@@ -407,7 +412,6 @@ def schedule_tasks(keywords: List[str], topics: List[str]):
     clear_logs()
     
     # Store keywords and topics globally for scheduled functions
-    global scheduled_keywords, scheduled_topics, task_counter
     scheduled_keywords = keywords
     scheduled_topics = topics
     task_counter = 0  # Reset task counter for new schedule
@@ -423,6 +427,14 @@ def schedule_tasks(keywords: List[str], topics: List[str]):
     print(f"✅ Scheduled tasks for keywords: {keywords}")
     print(f"✅ Scheduled tasks for topics: {topics}")
     print("🧹 Log files cleared for fresh start")
+    
+    # Start scheduler if not already running
+    if not scheduler_running:
+        scheduler_running = True
+        scheduler_thread = threading.Thread(target=run_scheduler)
+        scheduler_thread.daemon = True  # Make it a daemon thread
+        scheduler_thread.start()
+        print("🚀 Scheduler started successfully")
 
 def scheduled_reply_task():
     """Scheduled task for replying to tweets"""
@@ -485,16 +497,15 @@ def clear_logs():
 
 def run_scheduler():
     """Run the scheduler"""
-    while True:
+    global scheduler_running
+    while scheduler_running:
         try:
             schedule.run_pending()
             time.sleep(60)
-        except KeyboardInterrupt:
-            print("⏹️ Scheduler stopped by user")
-            break
         except Exception as e:
             print(f"❌ Scheduler error: {e}")
             time.sleep(60)
+    print("⏹️ Scheduler stopped")
 
 # ===== PYDANTIC MODELS =====
 
@@ -555,10 +566,12 @@ def clear_logs_endpoint():
 def stop_bot():
     """Stop the bot and clear all scheduled tasks"""
     try:
+        global scheduler_running, task_counter
+        # Stop the scheduler
+        scheduler_running = False
         # Clear all scheduled tasks
         schedule.clear()
         # Reset task counter
-        global task_counter
         task_counter = 0
         return {"message": "Bot stopped successfully"}
     except Exception as e:
@@ -567,18 +580,15 @@ def stop_bot():
 
 # Main entry point for running the scheduler
 if __name__ == "__main__":
-    import uvicorn
-    
     print("🤖 Twitter Bot Starting...")
     print("=" * 50)
     print("📱 Open http://localhost:8000 in your browser")
-    print("⏰ Bot will run at 11:00 AM, 2:00 PM, and 6:00 PM")
+    print("⏰ Scheduler will start when you call the /schedule endpoint")
     print("=" * 50)
     
-    # Run scheduler in a separate thread
-    import threading
-    scheduler_thread = threading.Thread(target=run_scheduler)
-    scheduler_thread.start()
-    
-    # Run FastAPI server
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Keep the main thread alive
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("⏹️ Bot stopped by user")
