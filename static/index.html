@@ -367,7 +367,7 @@
 
         async function fetchLogs() {
             try {
-                const response = await fetch('http://localhost:8000/logs');
+                const response = await fetch('https://twitter-bot-backend.onrender.com/logs');
                 const data = await response.json();
                 
                 // Save logs to local storage
@@ -496,7 +496,7 @@
         async function clearLogs() {
             if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
                 try {
-                    const response = await fetch('http://localhost:8000/clear_logs', {
+                    const response = await fetch('https://twitter-bot-backend.onrender.com/clear_logs', {
                         method: 'POST'
                     });
                     const data = await response.json();
@@ -524,7 +524,7 @@
         async function stopBot() {
             if (confirm('Are you sure you want to stop the bot? This will cancel all scheduled tasks.')) {
                 try {
-                    const response = await fetch('http://localhost:8000/stop', {
+                    const response = await fetch('https://twitter-bot-backend.onrender.com/stop', {
                         method: 'POST'
                     });
                     
