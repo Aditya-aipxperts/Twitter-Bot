@@ -295,7 +295,7 @@ Industry observations: Call out obvious things people don't say
 Personal experiments: "Tested this for 30 days, here's what happened"
 STRICT CONTENT RULES:
 
-Max 280 characters for single tweets (check your count!)
+Max 300 characters for single tweets 
 For threads: Each tweet must be valuable standalone
 NO obvious self-promotion or sales pitches
 NO corporate speak or buzzwords
@@ -417,8 +417,8 @@ def schedule_tasks(keywords: List[str], topics: List[str]):
     schedule.every().day.at("11:20").do(scheduled_post_task)
     schedule.every().day.at("14:00").do(scheduled_reply_task)
     schedule.every().day.at("14:20").do(scheduled_post_task)
-    schedule.every().day.at("18:00").do(scheduled_reply_task)
-    schedule.every().day.at("18:20").do(scheduled_post_task)
+    schedule.every().day.at("16:40").do(scheduled_reply_task)
+    schedule.every().day.at("16:50").do(scheduled_post_task)
     
     print(f"✅ Scheduled tasks for keywords: {keywords}")
     print(f"✅ Scheduled tasks for topics: {topics}")
