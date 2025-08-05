@@ -5,12 +5,17 @@ import threading
 from datetime import datetime
 from typing import List
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import tweepy
 import google.generativeai as genai
 import schedule
+
+
 
 # Load environment variables
 load_dotenv()
@@ -44,6 +49,7 @@ scheduler_thread = None  # Store scheduler thread
 
 # Initialize FastAPI app
 app = FastAPI(title="Twitter Bot")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
 app.add_middleware(
@@ -54,6 +60,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.get("/dashboard", include_in_schema=False)
+def serve_index():
+    return FileResponse("static/index.html")
 # Load or initialize data
 def load_data():
     """Load existing log data"""
@@ -576,5 +586,6 @@ def stop_bot():
         return {"message": "Bot stopped successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error stopping bot: {str(e)}")
+
 
 
