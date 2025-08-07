@@ -2,7 +2,7 @@ import os
 import time
 import json
 import threading
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -210,7 +210,7 @@ def search_and_reply(keywords: List[str], max_replies: int = 3):
         keyword = keywords[0]
         print(f"🔍 Searching for: '{keyword}' (using first keyword only)")
         
-        for attempt in range(3):  # Retry up to 3 times
+        for attempt in range(3):
             try:
                 response = client.search_recent_tweets(
                     query=keyword,
@@ -258,7 +258,7 @@ def search_and_reply(keywords: List[str], max_replies: int = 3):
                         results.append(log_entry)
                         print(f"✅ Replied to tweet: {tweet_id}")
                         replies_count += 1
-                        time.sleep(60)  # Increased delay to avoid rate limits
+                        time.sleep(60)
 
                     except tweepy.TooManyRequests as e:
                         handle_rate_limit(e.response.headers)
@@ -395,7 +395,7 @@ def post_tweet(topic: str):
     """Post a single tweet about the given topic"""
     results = []
     
-    for attempt in range(3):  # Retry up to 3 times
+    for attempt in range(3):
         try:
             tweet_content = generate_tweet_content(topic)
             print(f"🤖 Generated tweet: {tweet_content}")
@@ -446,7 +446,7 @@ def post_multiple_tweets(topics: List[str], max_posts: int = 3):
 # ===== SCHEDULING FUNCTIONS =====
 
 def schedule_tasks(keywords: List[str], topics: List[str], times: List[str]):
-    """Schedule reply and post tasks for user-provided times"""
+    """Schedule reply and post tasks for user-provided times (in IST, converted to UTC)"""
     global scheduled_keywords, scheduled_topics, scheduled_times, task_counter, scheduler_running, scheduler_thread
     
     # Clear any existing schedules
@@ -461,23 +461,31 @@ def schedule_tasks(keywords: List[str], topics: List[str], times: List[str]):
     scheduled_times = times
     task_counter = 0  # Reset task counter for new schedule
     
-    # Validate times
-    try:
-        for t in times:
-            datetime.strptime(t, "%H:%M")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Times must be in HH:MM format (24-hour clock).")
+    # Convert IST times to UTC (IST is UTC+5:30)
+    utc_times = []
+    for t in times:
+        try:
+            # Parse time as IST
+            ist_time = datetime.strptime(t, "%H:%M")
+            # Convert to UTC by subtracting 5 hours 30 minutes
+            utc_time = (datetime.combine(datetime.today(), ist_time.time()) - timedelta(hours=5, minutes=30)).strftime("%H:%M")
+            utc_times.append(utc_time)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Time '{t}' must be in HH:MM format (24-hour clock).")
     
     # Schedule tasks (alternating reply and post)
-    for i, t in enumerate(times):
+    print(f"📅 Scheduling tasks for UTC times: {utc_times}")
+    for i, t in enumerate(utc_times):
         if i % 2 == 0:
             schedule.every().day.at(t).do(scheduled_reply_task)
         else:
             schedule.every().day.at(t).do(scheduled_post_task)
+        print(f"📅 Scheduled {'reply' if i % 2 == 0 else 'post'} task at {t} UTC (original IST: {times[i]})")
     
     print(f"✅ Scheduled tasks for keywords: {keywords}")
     print(f"✅ Scheduled tasks for topics: {topics}")
-    print(f"✅ Scheduled tasks at times: {times}")
+    print(f"✅ Scheduled tasks at times (IST): {times}")
+    print(f"✅ Converted times (UTC): {utc_times}")
     print("🧹 Log files cleared for fresh start")
     
     # Start scheduler if not already running
@@ -491,7 +499,7 @@ def schedule_tasks(keywords: List[str], topics: List[str], times: List[str]):
 def scheduled_reply_task():
     """Scheduled task for replying to tweets"""
     global scheduled_keywords, reply_index, task_counter
-    print(f"⏰ Reply task triggered at {datetime.now().strftime('%H:%M:%S')}")
+    print(f"⏰ Reply task triggered at {datetime.now().strftime('%H:%M:%S')} UTC")
     print(f"🔍 Keywords: {scheduled_keywords}, Index: {reply_index}, Counter: {task_counter}")
     
     if scheduled_keywords:
@@ -518,7 +526,7 @@ def scheduled_reply_task():
 def scheduled_post_task():
     """Scheduled task for posting tweets"""
     global scheduled_topics, post_index, task_counter
-    print(f"⏰ Post task triggered at {datetime.now().strftime('%H:%M:%S')}")
+    print(f"⏰ Post task triggered at {datetime.now().strftime('%H:%M:%S')} UTC")
     print(f"📝 Topics: {scheduled_topics}, Index: {post_index}, Counter: {task_counter}")
     
     if scheduled_topics:
@@ -565,7 +573,7 @@ def run_scheduler():
     print("🔄 Scheduler thread started")
     while scheduler_running:
         try:
-            print(f"🔄 Checking pending tasks at {datetime.now().strftime('%H:%M:%S')}")
+            print(f"🔄 Checking pending tasks at {datetime.now().strftime('%H:%M:%S')} UTC")
             schedule.run_pending()
             time.sleep(60)
         except Exception as e:
@@ -607,7 +615,7 @@ def schedule_bot(request: BotRequest):
     
     schedule_tasks(request.keywords, request.topics, request.times)
     return {
-        "message": f"✅ Bot scheduled to reply to 3 tweets and post 3 tweets at specified times: {request.times}",
+        "message": f"✅ Bot scheduled to reply to 3 tweets and post 3 tweets at specified times (IST): {request.times}",
         "keywords": request.keywords,
         "topics": request.topics,
         "times": request.times
@@ -644,6 +652,16 @@ def stop_bot():
         return {"message": "Bot stopped successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error stopping bot: {str(e)}")
+
+# Temporary endpoint for immediate testing
+@app.post("/test_post")
+def test_post():
+    """Test posting a tweet immediately"""
+    try:
+        results = post_tweet("seo")
+        return {"message": "Test post attempted", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error testing post: {str(e)}")
 
 
 # import os
