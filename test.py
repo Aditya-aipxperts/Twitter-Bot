@@ -1,14 +1,18 @@
 import os
 import time
 import json
-from datetime import datetime
+import threading
+from datetime import datetime, time as dt_time
 from typing import List
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import tweepy
 import google.generativeai as genai
+import schedule
 
 # Load environment variables
 load_dotenv()
@@ -30,8 +34,20 @@ client = tweepy.Client(
 REPLY_LOG_FILE = "reply_log.json"
 POST_LOG_FILE = "post_log.json"
 
+# Global variables for scheduled tasks
+scheduled_keywords = []
+scheduled_topics = []
+scheduled_times = []
+reply_index = 0
+post_index = 0
+task_counter = 0  # Track completed tasks
+total_daily_tasks = 6  # 3 replies + 3 posts per day
+scheduler_running = False  # Track if scheduler is running
+scheduler_thread = None  # Store scheduler thread
+
 # Initialize FastAPI app
 app = FastAPI(title="Twitter Bot")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Add CORS middleware
 app.add_middleware(
@@ -42,19 +58,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/dashboard", include_in_schema=False)
+def serve_index():
+    return FileResponse("static/index.html")
+
 # Load or initialize data
 def load_data():
     """Load existing log data"""
     global replied_log, posted_log
     
-    # Load reply log
     if os.path.exists(REPLY_LOG_FILE):
         with open(REPLY_LOG_FILE, "r") as f:
             replied_log = json.load(f)
     else:
         replied_log = []
     
-    # Load post log
     if os.path.exists(POST_LOG_FILE):
         with open(POST_LOG_FILE, "r") as f:
             posted_log = json.load(f)
@@ -97,7 +115,6 @@ def generate_comment(tweet_text: str, username: str, keyword: str) -> str:
     try:
         prompt = f"""
 You are a friendly, witty, and authentic Twitter user who replies like a blend of @levelsio (Pieter Levels) and @TheBoringMarketer. You show genuine interest, often reply quickly, casually, and add value in a human and sometimes playful way.
-
 INPUT:
 
 Tweet content: "{tweet_text}"
@@ -149,33 +166,31 @@ If it's asking for help: Give actual actionable advice, not generic encouragemen
 
 QUALITY CHECK:
 Before submitting, ask: "Would I actually send this reply if I saw this tweet while scrolling at 11pm?" If no, revise.
-Generate a short, natural, and engaging reply that sounds like it came from a real person who just happened to have something interesting to add.
+Generate a short, natural, and engaging reply that sounds like it came from a real person who just happened to have something interesting to add.        
 """
-        
         response = model.generate_content(prompt)
         comment = response.text.strip()
-        
-        # Ensure it's within Twitter's character limit
         if len(comment) > 280:
             comment = comment[:277] + "..."
-        
         return comment
     except Exception as e:
         print(f"❌ Error generating comment: {e}")
-        # Fallback to a simple comment
         return f"Interesting take on {keyword}! Thanks for sharing @{username}"
 
-def search_and_reply(keywords: List[str]):
-    """Search for tweets with keywords and reply to them"""
+def search_and_reply(keywords: List[str], max_replies: int = 3):
+    """Search for tweets with keywords and reply to up to max_replies"""
     results = []
+    replies_count = 0
     
-    for keyword in keywords:
-        print(f"🔍 Searching for: '{keyword}'")
+    # Use only the first keyword to avoid rate limits
+    if keywords:
+        keyword = keywords[0]  # Take only the first keyword
+        print(f"🔍 Searching for: '{keyword}' (using first keyword only)")
         
         try:
             response = client.search_recent_tweets(
                 query=keyword,
-                max_results=10,
+                max_results=10,  # Search for more tweets to find 3 good ones
                 expansions=["author_id"],
                 tweet_fields=["created_at", "text"],
                 user_fields=["username"]
@@ -183,11 +198,13 @@ def search_and_reply(keywords: List[str]):
 
             if not response.data:
                 print(f"⚠️ No tweets found for '{keyword}'")
-                continue
+                return results
 
             users = {u["id"]: u for u in response.includes["users"]}
 
             for tweet in response.data:
+                if replies_count >= max_replies:
+                    break
                 tweet_id = tweet.id
                 if already_replied(tweet_id):
                     print(f"⏭️ Already replied to tweet: {tweet_id}")
@@ -198,11 +215,8 @@ def search_and_reply(keywords: List[str]):
                 tweet_text = tweet.text
 
                 try:
-                    # Generate a human-like comment
                     generated_comment = generate_comment(tweet_text, username, keyword)
                     print(f"🤖 Generated comment: {generated_comment}")
-                    
-                    # Post the reply
                     client.create_tweet(in_reply_to_tweet_id=tweet_id, text=generated_comment)
 
                     log_entry = {
@@ -219,28 +233,27 @@ def search_and_reply(keywords: List[str]):
                     save_reply_log(log_entry)
                     results.append(log_entry)
                     print(f"✅ Replied to tweet: {tweet_id}")
-                    time.sleep(300)  # Wait 5 minutes between posts
+                    replies_count += 1
+                    time.sleep(30)
 
                 except tweepy.TooManyRequests as e:
-                    print("⏳ Rate limit hit. Waiting for reset...")
                     handle_rate_limit(e.response.headers)
-                    return results
+                    # Continue with the next tweet instead of returning
+                    continue
 
         except tweepy.TooManyRequests as e:
-            print("⏳ Rate limit hit. Waiting for reset...")
             handle_rate_limit(e.response.headers)
-            return results
+            # Try again with the same keyword instead of returning
+            return search_and_reply(keywords, max_replies)
         except Exception as e:
             print(f"❌ Error for keyword '{keyword}': {e}")
-
-        time.sleep(30)  
 
     return results
 
 # ===== POST CONTENT BOT FUNCTIONS =====
 
 def generate_tweet_content(topic: str) -> str:
-    """Generate original tweet content about surfGeo and GEO"""
+    """Generate original tweet content"""
     try:
         prompt = f"""
 You are a friendly, witty, and authentic Twitter user who creates content like a blend of @levelsio (Pieter Levels) and @TheBoringMarketer. You craft original tweets that feel genuine, valuable, and scroll-stopping without trying too hard.
@@ -295,7 +308,7 @@ Industry observations: Call out obvious things people don't say
 Personal experiments: "Tested this for 30 days, here's what happened"
 STRICT CONTENT RULES:
 
-Max 280 characters for single tweets (check your count!)
+Max 300 characters for single tweets 
 For threads: Each tweet must be valuable standalone
 NO obvious self-promotion or sales pitches
 NO corporate speak or buzzwords
@@ -337,36 +350,29 @@ Could spark meaningful replies
 Relates directly to the keyword/topic
 Sounds like it came from real experience
 Remember: The best tweets feel like overheard conversations from someone who actually knows what they're talking about.
+
+DO not use * in the tweet content.
 """
-        
         response = model.generate_content(prompt)
         tweet_content = response.text.strip()
-        
-        # Ensure it's within Twitter's character limit
         if len(tweet_content) > 280:
             tweet_content = tweet_content[:277] + "..."
-        
         return tweet_content
     except Exception as e:
         print(f"❌ Error generating tweet content: {e}")
-    return f"been diving deep into {topic} lately... the rabbit hole goes deeper than most people realize"
-
+        return f"been diving deep into {topic} lately... the rabbit hole goes deeper than most people realize"
 
 def post_tweet(topic: str):
     """Post a single tweet about the given topic"""
     results = []
     
     try:
-        # Generate tweet content
         tweet_content = generate_tweet_content(topic)
         print(f"🤖 Generated tweet: {tweet_content}")
-        
-        # Post the tweet
         response = client.create_tweet(text=tweet_content)
         
         if response.data:
             tweet_id = response.data["id"]
-            
             log_entry = {
                 "type": "post",
                 "id": tweet_id,
@@ -382,39 +388,149 @@ def post_tweet(topic: str):
         return results
         
     except tweepy.TooManyRequests as e:
-        print("⏳ Rate limit hit. Waiting for reset...")
         handle_rate_limit(e.response.headers)
         return results
     except Exception as e:
         print(f"❌ Error posting tweet: {e}")
         return results
 
-def post_multiple_tweets(topics: List[str]):
-    """Post multiple tweets with delays between them"""
-    all_results = []
+def post_multiple_tweets(topics: List[str], max_posts: int = 3):
+    """Post up to max_posts tweets with delays"""
+    results = []
+    posts_count = 0
     
     for topic in topics:
-        print(f"📝 Posting about: '{topic}'")
-        
-        results = post_tweet(topic)
-        all_results.extend(results)
-        
-        if results:  # If tweet was posted successfully
-            print("⏳ Waiting 10 minutes before next post...")
-            time.sleep(600)  # Wait 10 minutes between posts
-        else:
-            print("❌ Failed to post tweet, stopping...")
+        if posts_count >= max_posts:
             break
+        print(f"📝 Posting about: '{topic}'")
+        results.extend(post_tweet(topic))
+        posts_count += 1
+        time.sleep(300)
     
-    return all_results
+    return results
+
+# ===== SCHEDULING FUNCTIONS =====
+
+def schedule_tasks(keywords: List[str], topics: List[str], times: List[str]):
+    """Schedule reply and post tasks for user-provided times"""
+    global scheduled_keywords, scheduled_topics, scheduled_times, task_counter, scheduler_running, scheduler_thread
+    
+    # Clear any existing schedules
+    schedule.clear()
+    
+    # Clear logs when scheduling
+    clear_logs()
+    
+    # Store keywords, topics, and times globally
+    scheduled_keywords = keywords
+    scheduled_topics = topics
+    scheduled_times = times
+    task_counter = 0  # Reset task counter for new schedule
+    
+    # Validate times
+    try:
+        for t in times:
+            datetime.strptime(t, "%H:%M")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Times must be in HH:MM format (24-hour clock).")
+    
+    # Schedule tasks (alternating reply and post)
+    for i, t in enumerate(times):
+        if i % 2 == 0:
+            schedule.every().day.at(t).do(scheduled_reply_task)
+        else:
+            schedule.every().day.at(t).do(scheduled_post_task)
+    
+    print(f"✅ Scheduled tasks for keywords: {keywords}")
+    print(f"✅ Scheduled tasks for topics: {topics}")
+    print(f"✅ Scheduled tasks at times: {times}")
+    print("🧹 Log files cleared for fresh start")
+    
+    # Start scheduler if not already running
+    if not scheduler_running:
+        scheduler_running = True
+        scheduler_thread = threading.Thread(target=run_scheduler)
+        scheduler_thread.daemon = True  # Make it a daemon thread
+        scheduler_thread.start()
+        print("🚀 Scheduler started successfully")
+
+def scheduled_reply_task():
+    """Scheduled task for replying to tweets"""
+    global scheduled_keywords, reply_index, task_counter
+    print(f"⏰ Executing scheduled reply task at {datetime.now().strftime('%H:%M')}")
+    
+    # Cycle through keywords
+    if scheduled_keywords:
+        current_keyword = scheduled_keywords[reply_index % len(scheduled_keywords)]
+        print(f"🔍 Using keyword: '{current_keyword}' (index {reply_index})")
+        search_and_reply([current_keyword], max_replies=3)
+        reply_index += 1
+        task_counter += 1
+        
+        # Check if all tasks completed
+        if task_counter >= total_daily_tasks:
+            print("🎉 All daily tasks completed! Stopping bot automatically...")
+            schedule.clear()
+            print("✅ Bot stopped automatically after completing all scheduled tasks")
+            print("🔄 Ready for new schedule tomorrow")
+
+def scheduled_post_task():
+    """Scheduled task for posting tweets"""
+    global scheduled_topics, post_index, task_counter
+    print(f"⏰ Executing scheduled post task at {datetime.now().strftime('%H:%M')}")
+    
+    # Cycle through topics
+    if scheduled_topics:
+        current_topic = scheduled_topics[post_index % len(scheduled_topics)]
+        print(f"📝 Using topic: '{current_topic}' (index {post_index})")
+        post_multiple_tweets([current_topic], max_posts=1)  # Post 1 tweet per topic
+        post_index += 1
+        task_counter += 1
+        
+        # Check if all tasks completed
+        if task_counter >= total_daily_tasks:
+            print("🎉 All daily tasks completed! Stopping bot automatically...")
+            schedule.clear()
+            print("✅ Bot stopped automatically after completing all scheduled tasks")
+            print("🔄 Ready for new schedule tomorrow")
+
+def clear_logs():
+    """Clear log files daily"""
+    global replied_log, posted_log
+    
+    try:
+        # Clear the log lists
+        replied_log.clear()
+        posted_log.clear()
+        
+        # Clear the JSON files
+        with open(REPLY_LOG_FILE, "w") as f:
+            json.dump([], f)
+        with open(POST_LOG_FILE, "w") as f:
+            json.dump([], f)
+        
+        print("🧹 Daily log files cleared successfully")
+    except Exception as e:
+        print(f"❌ Error clearing logs: {e}")
+
+def run_scheduler():
+    """Run the scheduler"""
+    global scheduler_running
+    while scheduler_running:
+        try:
+            schedule.run_pending()
+            time.sleep(60)
+        except Exception as e:
+            print(f"❌ Scheduler error: {e}")
+            time.sleep(60)
+    print("⏹️ Scheduler stopped")
 
 # ===== PYDANTIC MODELS =====
 
-class ReplyRequest(BaseModel):
+class BotRequest(BaseModel):
     keywords: List[str]
-
-class PostRequest(BaseModel):
     topics: List[str]
+    times: List[str]  # New field for user-specified times in HH:MM format
 
 # ===== API ENDPOINTS =====
 
@@ -422,119 +538,64 @@ class PostRequest(BaseModel):
 def root():
     """Root endpoint"""
     return {
-        "message": "Unified surfGeo Twitter Bot is live!",
+        "message": "Twitter Bot is live!",
         "endpoints": {
-            "reply": "POST /reply - Reply to tweets with keywords",
-            "reply-continuous": "POST /reply-continuous - Reply continuously",
-            "post": "POST /post - Post single tweet",
-            "post-multiple": "POST /post-multiple - Post multiple tweets",
-            "post-continuous": "POST /post-continuous - Post continuously"
+            "schedule": "POST /schedule - Schedule reply and post tasks with custom times",
+            "logs": "GET /logs - Get reply and post logs",
+            "clear_logs": "POST /clear_logs - Clear all logs",
+            "stop": "POST /stop - Stop the bot and clear scheduled tasks"
         },
-        "status": "Ready to post and reply to tweets"
+        "status": "Ready to schedule tasks"
     }
 
-# Reply Bot Endpoints
-@app.post("/reply")
-def run_reply_bot(request: ReplyRequest):
-    """Run reply bot once with given keywords"""
-    if not request.keywords:
-        raise HTTPException(status_code=400, detail="Keywords are required.")
+@app.post("/schedule")
+def schedule_bot(request: BotRequest):
+    """Schedule bot tasks with given keywords, topics, and times"""
+    if not request.keywords or not request.topics or not request.times:
+        raise HTTPException(status_code=400, detail="Keywords, topics, and times are required.")
     
-    results = search_and_reply(request.keywords)
+    if len(request.times) < total_daily_tasks:
+        raise HTTPException(status_code=400, detail=f"At least {total_daily_tasks} times are required for {total_daily_tasks} tasks (3 replies + 3 posts).")
+    
+    schedule_tasks(request.keywords, request.topics, request.times)
     return {
-        "message": f"✅ Reply bot completed. {len(results)} tweets replied with AI-generated comments.",
-        "log": results
+        "message": f"✅ Bot scheduled to reply to 3 tweets and post 3 tweets at specified times: {request.times}",
+        "keywords": request.keywords,
+        "topics": request.topics,
+        "times": request.times
     }
 
-@app.post("/reply-continuous")
-def run_reply_bot_continuous(request: ReplyRequest):
-    """Run reply bot continuously, auto-resuming after rate limits"""
-    if not request.keywords:
-        raise HTTPException(status_code=400, detail="Keywords are required.")
-    
-    all_results = []
-    while True:
-        try:
-            results = search_and_reply(request.keywords)
-            all_results.extend(results)
-            
-            if not results:  # No tweets found or limits reached
-                print("🔄 No more tweets to process, waiting 15 minutes before next search...")
-                time.sleep(900)  # Wait 15 minutes
-                continue
-                
-        except KeyboardInterrupt:
-            print("⏹️ Reply bot stopped by user")
-            break
-        except Exception as e:
-            print(f"❌ Error in continuous reply mode: {e}")
-            time.sleep(60)  # Wait 1 minute before retry
-            continue
-    
+@app.get("/logs")
+def get_logs():
+    """Get reply and post logs"""
     return {
-        "message": f"✅ Continuous reply mode completed. {len(all_results)} total tweets replied.",
-        "log": all_results
+        "reply_log": replied_log,
+        "post_log": posted_log,
+        "task_counter": task_counter,
+        "total_tasks": total_daily_tasks,
+        "is_completed": task_counter >= total_daily_tasks
     }
 
-# Post Content Bot Endpoints
-@app.post("/post")
-def post_single_tweet(request: PostRequest):
-    """Post a single tweet about the first topic"""
-    if not request.topics:
-        raise HTTPException(status_code=400, detail="Topics are required.")
-    
-    results = post_tweet(request.topics[0])
-    return {
-        "message": f"✅ Posted tweet about '{request.topics[0]}'.",
-        "log": results
-    }
+@app.post("/clear_logs")
+def clear_logs_endpoint():
+    """Clear all logs"""
+    try:
+        clear_logs()
+        return {"message": "Logs cleared successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error clearing logs: {str(e)}")
 
-@app.post("/post-multiple")
-def post_multiple_tweets_endpoint(request: PostRequest):
-    """Post multiple tweets with delays"""
-    if not request.topics:
-        raise HTTPException(status_code=400, detail="Topics are required.")
-    
-    results = post_multiple_tweets(request.topics)
-    return {
-        "message": f"✅ Posted {len(results)} tweets about surfGeo and GEO.",
-        "log": results
-    }
-
-@app.post("/post-continuous")
-def post_continuous(request: PostRequest):
-    """Post tweets continuously with delays"""
-    if not request.topics:
-        raise HTTPException(status_code=400, detail="Topics are required.")
-    
-    all_results = []
-    topic_index = 0
-    
-    while True:
-        try:
-            # Get current topic
-            topic = request.topics[topic_index % len(request.topics)]
-            
-            results = post_tweet(topic)
-            all_results.extend(results)
-            
-            if results:  # If tweet was posted successfully
-                topic_index += 1
-                print("⏳ Waiting 15 minutes before next post...")
-                time.sleep(900)  # Wait 15 minutes
-            else:
-                print("❌ Failed to post tweet, stopping...")
-                break
-                
-        except KeyboardInterrupt:
-            print("⏹️ Post bot stopped by user")
-            break
-        except Exception as e:
-            print(f"❌ Error in continuous post mode: {e}")
-            time.sleep(60)  # Wait 1 minute before retry
-            continue
-    
-    return {
-        "message": f"✅ Continuous posting completed. {len(all_results)} total tweets posted.",
-        "log": all_results
-    }
+@app.post("/stop")
+def stop_bot():
+    """Stop the bot and clear all scheduled tasks"""
+    try:
+        global scheduler_running, task_counter
+        # Stop the scheduler
+        scheduler_running = False
+        # Clear all scheduled tasks
+        schedule.clear()
+        # Reset task counter
+        task_counter = 0
+        return {"message": "Bot stopped successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error stopping bot: {str(e)}")

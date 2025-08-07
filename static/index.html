@@ -98,49 +98,102 @@
                             </p>
                         </div>
 
+                        <!-- Times Section -->
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 flex items-center">
+                                <i class="fas fa-clock mr-2 text-purple-500"></i>
+                                Schedule Times
+                            </label>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <!-- Time 1: Reply -->
+                                <div class="space-y-1">
+                                    <label class="text-xs text-gray-600">Time 1 (Reply)</label>
+                                    <input type="time" id="time1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" value="11:00">
+                                </div>
+                                <!-- Time 2: Post -->
+                                <div class="space-y-1">
+                                    <label class="text-xs text-gray-600">Time 2 (Post)</label>
+                                    <input type="time" id="time2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" value="11:15">
+                                </div>
+                                <!-- Time 3: Reply -->
+                                <div class="space-y-1">
+                                    <label class="text-xs text-gray-600">Time 3 (Reply)</label>
+                                    <input type="time" id="time3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" value="14:00">
+                                </div>
+                                <!-- Time 4: Post -->
+                                <div class="space-y-1">
+                                    <label class="text-xs text-gray-600">Time 4 (Post)</label>
+                                    <input type="time" id="time4" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" value="14:15">
+                                </div>
+                                <!-- Time 5: Reply -->
+                                <div class="space-y-1">
+                                    <label class="text-xs text-gray-600">Time 5 (Reply)</label>
+                                    <input type="time" id="time5" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" value="16:40">
+                                </div>
+                                <!-- Time 6: Post -->
+                                <div class="space-y-1">
+                                    <label class="text-xs text-gray-600">Time 6 (Post)</label>
+                                    <input type="time" id="time6" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" value="16:50">
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 flex items-center">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Select 6 times for your schedule. Pattern: Reply → Post → Reply → Post → Reply → Post
+                            </p>
+                            <div id="timeWarning" class="mt-2"></div>
+                            <div class="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+                                <i class="fas fa-clock mr-1"></i>
+                                <strong>API Rate Limit:</strong> Times must be at least 15 minutes apart to avoid Twitter API rate limits.
+                            </div>
+                        </div>
+
                         <!-- Schedule Info -->
                         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                             <h3 class="text-sm font-semibold text-blue-800 flex items-center mb-3">
                                 <i class="fas fa-clock mr-2"></i>
-                                Scheduled Times
+                                Schedule Pattern
                             </h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div class="space-y-2">
                                     <div class="flex items-center text-sm">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                                        <span class="font-medium">11:00 AM</span>
+                                        <span class="font-medium">Time 1</span>
                                         <span class="text-gray-600 ml-2">Reply to 3 tweets</span>
                                     </div>
                                     <div class="flex items-center text-sm">
                                         <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                        <span class="font-medium">11:15 AM</span>
-                                        <span class="text-gray-600 ml-2">Post 3 tweets</span>
+                                        <span class="font-medium">Time 2</span>
+                                        <span class="text-gray-600 ml-2">Post 1 tweet</span>
                                     </div>
                                 </div>
                                 <div class="space-y-2">
                                     <div class="flex items-center text-sm">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                                        <span class="font-medium">2:00 PM</span>
+                                        <span class="font-medium">Time 3</span>
                                         <span class="text-gray-600 ml-2">Reply to 3 tweets</span>
                                     </div>
                                     <div class="flex items-center text-sm">
                                         <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                        <span class="font-medium">2:15 PM</span>
-                                        <span class="text-gray-600 ml-2">Post 3 tweets</span>
+                                        <span class="font-medium">Time 4</span>
+                                        <span class="text-gray-600 ml-2">Post 1 tweet</span>
                                     </div>
                                 </div>
                                 <div class="space-y-2 md:col-span-2">
                                     <div class="flex items-center text-sm">
                                         <div class="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-                                        <span class="font-medium">6:00 PM</span>
+                                        <span class="font-medium">Time 5</span>
                                         <span class="text-gray-600 ml-2">Reply to 3 tweets</span>
                                     </div>
                                     <div class="flex items-center text-sm">
                                         <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                                        <span class="font-medium">6:15 PM</span>
-                                        <span class="text-gray-600 ml-2">Post 3 tweets</span>
+                                        <span class="font-medium">Time 6</span>
+                                        <span class="text-gray-600 ml-2">Post 1 tweet</span>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-700">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                <strong>Pattern:</strong> Reply → Post → Reply → Post → Reply → Post (6 total tasks)
                             </div>
                         </div>
 
@@ -260,9 +313,20 @@
             const keywordsInput = document.getElementById('keywords').value.trim();
             const topicsInput = document.getElementById('topics').value.trim();
             
+            // Collect times from individual time pickers
+            const times = [];
+            for (let i = 1; i <= 6; i++) {
+                const timeValue = document.getElementById(`time${i}`).value;
+                if (!timeValue) {
+                    showNotification(`Please select time ${i}`, 'error');
+                    return;
+                }
+                times.push(timeValue);
+            }
+            
             // Validate inputs
             if (!keywordsInput || !topicsInput) {
-                showNotification('Please enter both keywords and topics', 'error');
+                showNotification('Please enter keywords and topics', 'error');
                 return;
             }
             
@@ -272,6 +336,24 @@
             if (keywords.length === 0 || topics.length === 0) {
                 showNotification('Please enter valid keywords and topics (comma-separated)', 'error');
                 return;
+            }
+            
+            // Validate that all times are selected
+            if (times.length !== 6) {
+                showNotification('Please select all 6 times', 'error');
+                return;
+            }
+            
+            // Validate time spacing (minimum 15 minutes apart due to API rate limits)
+            for (let i = 0; i < times.length - 1; i++) {
+                const currentTime = new Date(`2000-01-01T${times[i]}:00`);
+                const nextTime = new Date(`2000-01-01T${times[i + 1]}:00`);
+                const timeDiff = (nextTime - currentTime) / (1000 * 60); // Difference in minutes
+                
+                if (timeDiff < 15) {
+                    showNotification(`Times must be at least 15 minutes apart. Time ${i + 1} and Time ${i + 2} are only ${Math.round(timeDiff)} minutes apart.`, 'error');
+                    return;
+                }
             }
             
             // Show loading state
@@ -284,7 +366,7 @@
                 const response = await fetch('https://twitter-bot-backend.onrender.com/schedule', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ keywords, topics })
+                    body: JSON.stringify({ keywords, topics, times })
                 });
                 
                 const data = await response.json();
@@ -306,7 +388,7 @@
                     // Show stop button
                     document.getElementById('stopButton').classList.remove('hidden');
                     
-                    addActivityItem('Bot scheduled with ' + keywords.length + ' keywords and ' + topics.length + ' topics');
+                    addActivityItem(`Bot scheduled with ${keywords.length} keywords, ${topics.length} topics, and ${times.length} times`);
                 } else {
                     showNotification('Error: ' + (data.detail || 'Failed to schedule bot'), 'error');
                 }
@@ -560,6 +642,12 @@
             // Clear form inputs
             document.getElementById('keywords').value = '';
             document.getElementById('topics').value = '';
+            document.getElementById('time1').value = '11:00';
+            document.getElementById('time2').value = '11:15';
+            document.getElementById('time3').value = '14:00';
+            document.getElementById('time4').value = '14:15';
+            document.getElementById('time5').value = '16:40';
+            document.getElementById('time6').value = '16:50';
             
             // Reset stats
             document.getElementById('repliesCount').textContent = '0';
@@ -663,6 +751,16 @@
             // Update header status
             document.getElementById('statusIndicator').className = 'w-2 h-2 bg-gray-400 rounded-full';
             document.getElementById('statusText').textContent = 'Bot Inactive';
+            
+            // Clear form inputs
+            document.getElementById('keywords').value = '';
+            document.getElementById('topics').value = '';
+            document.getElementById('time1').value = '11:00';
+            document.getElementById('time2').value = '11:15';
+            document.getElementById('time3').value = '14:00';
+            document.getElementById('time4').value = '14:15';
+            document.getElementById('time5').value = '16:40';
+            document.getElementById('time6').value = '16:50';
             
             // Clear logs display
             document.getElementById('logs').innerHTML = `
@@ -792,6 +890,62 @@
                 `;
             }
         }
+
+        // Function to validate time spacing and provide guidance
+        function validateTimeSpacing() {
+            const times = [];
+            for (let i = 1; i <= 6; i++) {
+                const timeValue = document.getElementById(`time${i}`).value;
+                if (timeValue) {
+                    times.push(timeValue);
+                }
+            }
+            
+            if (times.length < 2) return; // Need at least 2 times to validate
+            
+            // Check spacing between consecutive times
+            for (let i = 0; i < times.length - 1; i++) {
+                const currentTime = new Date(`2000-01-01T${times[i]}:00`);
+                const nextTime = new Date(`2000-01-01T${times[i + 1]}:00`);
+                const timeDiff = (nextTime - currentTime) / (1000 * 60);
+                
+                if (timeDiff < 15) {
+                    // Highlight the problematic time inputs
+                    document.getElementById(`time${i + 1}`).classList.add('border-red-500');
+                    document.getElementById(`time${i + 2}`).classList.add('border-red-500');
+                    
+                    // Show warning message
+                    const warningDiv = document.getElementById('timeWarning');
+                    if (warningDiv) {
+                        warningDiv.innerHTML = `
+                            <div class="text-red-600 text-xs flex items-center mt-1">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Time ${i + 1} and Time ${i + 2} are only ${Math.round(timeDiff)} minutes apart. 
+                                Minimum 15 minutes required due to API rate limits.
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+            }
+            
+            // Clear warnings if spacing is valid
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`time${i}`).classList.remove('border-red-500');
+            }
+            
+            const warningDiv = document.getElementById('timeWarning');
+            if (warningDiv) {
+                warningDiv.innerHTML = '';
+            }
+        }
+
+        // Add event listeners for time inputs
+        document.addEventListener('DOMContentLoaded', function() {
+            for (let i = 1; i <= 6; i++) {
+                document.getElementById(`time${i}`).addEventListener('change', validateTimeSpacing);
+            }
+        });
 
         // Initial load - show local storage logs first, then fetch from server
         displayLogsFromLocalStorage();
