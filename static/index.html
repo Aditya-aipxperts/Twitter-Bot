@@ -40,6 +40,10 @@
                         <div class="w-2 h-2 bg-gray-400 rounded-full" id="statusIndicator"></div>
                         <span id="statusText">Bot Inactive</span>
                     </div>
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <div class="w-2 h-2 bg-green-400 rounded-full" id="connectionIndicator"></div>
+                        <span id="connectionText">Connected</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -244,6 +248,13 @@
                             </div>
                             <span class="text-lg font-bold text-purple-600" id="botStatus">Inactive</span>
                         </div>
+                        <div class="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                            <div class="flex items-center">
+                                <i class="fas fa-tasks text-orange-500 mr-2"></i>
+                                <span class="text-sm font-medium text-gray-700">Task Progress</span>
+                            </div>
+                            <span class="text-lg font-bold text-orange-600" id="taskProgress">0/6</span>
+                        </div>
                     </div>
                 </div>
 
@@ -273,7 +284,7 @@
                             <i class="fas fa-list-alt mr-2"></i>
                             Activity Logs
                         </h2>
-                        <button onclick="fetchLogs()" 
+                        <button id="refreshButton" onclick="fetchLogs()" 
                                 class="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-all duration-200 flex items-center space-x-2">
                             <i class="fas fa-sync-alt"></i>
                             <span>Refresh</span>
@@ -363,7 +374,7 @@
             button.disabled = true;
             
             try {
-                const response = await fetch('https://twitter-bot-backend.onrender.com/schedule', {
+                const response = await fetch('/schedule', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ keywords, topics, times })
@@ -448,8 +459,14 @@
         }
 
         async function fetchLogs() {
+            // Show loading state
+            const refreshButton = document.getElementById('refreshButton');
+            const originalContent = refreshButton.innerHTML;
+            refreshButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
+            refreshButton.disabled = true;
+            
             try {
-                const response = await fetch('https://twitter-bot-backend.onrender.com/logs');
+                const response = await fetch('/logs');
                 const data = await response.json();
                 
                 // Save logs to local storage
@@ -461,6 +478,7 @@
                 // Update stats
                 document.getElementById('repliesCount').textContent = data.reply_log.length;
                 document.getElementById('postsCount').textContent = data.post_log.length;
+                document.getElementById('taskProgress').textContent = `${data.task_counter}/${data.total_tasks}`;
                 
                 // Update completion status
                 if (data.is_completed) {
@@ -572,13 +590,17 @@
                         <p class="text-red-500">Error fetching logs: ${error.message}</p>
                     </div>
                 `;
+            } finally {
+                // Reset button
+                refreshButton.innerHTML = originalContent;
+                refreshButton.disabled = false;
             }
         }
 
         async function clearLogs() {
             if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
                 try {
-                    const response = await fetch('https://twitter-bot-backend.onrender.com/clear_logs', {
+                    const response = await fetch('/clear_logs', {
                         method: 'POST'
                     });
                     const data = await response.json();
@@ -606,7 +628,7 @@
         async function stopBot() {
             if (confirm('Are you sure you want to stop the bot? This will cancel all scheduled tasks.')) {
                 try {
-                    const response = await fetch('https://twitter-bot-backend.onrender.com/stop', {
+                    const response = await fetch('/stop', {
                         method: 'POST'
                     });
                     
@@ -653,6 +675,7 @@
             document.getElementById('repliesCount').textContent = '0';
             document.getElementById('postsCount').textContent = '0';
             document.getElementById('botStatus').textContent = 'Inactive';
+            document.getElementById('taskProgress').textContent = '0/6';
             
             // Update header status
             document.getElementById('statusIndicator').className = 'w-2 h-2 bg-gray-400 rounded-full';
@@ -747,6 +770,7 @@
             document.getElementById('repliesCount').textContent = '0';
             document.getElementById('postsCount').textContent = '0';
             document.getElementById('botStatus').textContent = 'Inactive';
+            document.getElementById('taskProgress').textContent = '0/6';
             
             // Update header status
             document.getElementById('statusIndicator').className = 'w-2 h-2 bg-gray-400 rounded-full';
@@ -785,6 +809,7 @@
             // Update stats
             document.getElementById('repliesCount').textContent = data.reply_log.length;
             document.getElementById('postsCount').textContent = data.post_log.length;
+            document.getElementById('taskProgress').textContent = `${data.task_counter}/${data.total_tasks}`;
             
             // Update completion status
             if (data.is_completed) {
@@ -947,9 +972,61 @@
             }
         });
 
+        // Function to check connection status
+        async function checkConnection() {
+            try {
+                const response = await fetch('/');
+                if (response.ok) {
+                    document.getElementById('connectionIndicator').className = 'w-2 h-2 bg-green-400 rounded-full';
+                    document.getElementById('connectionText').textContent = 'Connected';
+                } else {
+                    document.getElementById('connectionIndicator').className = 'w-2 h-2 bg-red-400 rounded-full';
+                    document.getElementById('connectionText').textContent = 'Error';
+                }
+            } catch (error) {
+                document.getElementById('connectionIndicator').className = 'w-2 h-2 bg-red-400 rounded-full';
+                document.getElementById('connectionText').textContent = 'Disconnected';
+            }
+        }
+
+        // Function to check bot status periodically
+        async function checkBotStatus() {
+            try {
+                const response = await fetch('/logs');
+                const data = await response.json();
+                
+                // Update task progress
+                document.getElementById('taskProgress').textContent = `${data.task_counter}/${data.total_tasks}`;
+                
+                // Update completion status
+                if (data.is_completed) {
+                    document.getElementById('botStatus').textContent = 'Completed';
+                    document.getElementById('statusIndicator').className = 'w-2 h-2 bg-yellow-400 rounded-full';
+                    document.getElementById('statusText').textContent = 'Tasks Completed';
+                    
+                    // Reset schedule button when completed
+                    const button = document.getElementById('scheduleButton');
+                    button.innerHTML = '<i class="fas fa-play"></i><span>Schedule Bot</span>';
+                    button.className = 'w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2';
+                    button.disabled = false;
+                    
+                    // Hide stop button
+                    document.getElementById('stopButton').classList.add('hidden');
+                }
+            } catch (error) {
+                console.log('Error checking bot status:', error);
+            }
+        }
+
         // Initial load - show local storage logs first, then fetch from server
         displayLogsFromLocalStorage();
         fetchLogs();
+        checkConnection();
+        
+        // Check bot status every 30 seconds
+        setInterval(checkBotStatus, 30000);
+        // Check connection every 60 seconds
+        setInterval(checkConnection, 60000);
     </script>
 </body>
 </html>
