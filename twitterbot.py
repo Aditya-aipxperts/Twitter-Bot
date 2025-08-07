@@ -430,7 +430,7 @@ def schedule_tasks(keywords: List[str], topics: List[str]):
     schedule.every().day.at("11:00").do(scheduled_reply_task)
     schedule.every().day.at("11:20").do(scheduled_post_task)
     schedule.every().day.at("14:00").do(scheduled_reply_task)
-    schedule.every().day.at("14:20").do(scheduled_post_task)
+    schedule.every().day.at("14:15").do(scheduled_post_task)
     schedule.every().day.at("16:40").do(scheduled_reply_task)
     schedule.every().day.at("16:50").do(scheduled_post_task)
     
